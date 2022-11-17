@@ -1,2 +1,4 @@
-# firebase-storage-tutorial
-Stuff left out of the official documentation
+# Firebase Storage: Stuff Left Out of the Official Documentation
+
+
+
