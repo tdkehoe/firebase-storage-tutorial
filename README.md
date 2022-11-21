@@ -168,7 +168,7 @@ That should execute. If you open the file data in your Firebase Console you'll s
 
 Now we get to the part you've been waiting for. There are two "gotchas" here. 
 
-First, you can't just upload any file. You can only upload a [JavaScript File](https://developer.mozilla.org/en-US/docs/Web/API/File). JavaScript Files are made with the `new File()` constructor, which isn't available in Node. In Node we use
+First, you can't just upload any file. You can only upload a [JavaScript File](https://developer.mozilla.org/en-US/docs/Web/API/File). JavaScript Files are made with the `new File()` constructor, which isn't available in Node. In Node you use
 
 ```js
 fs.writeFile('<fileName>',<contenet>, callbackFunction)
@@ -191,6 +191,62 @@ In `index.js`, import your new ES module:
 import { txtFile } from "./myModule.js";
 ```
 
-So far, so good. We have a file available but it's not a JavaScript File.
+So far, so good. We have a file available but it's not a JavaScript File. Let's try uploading our file to Storage.
+
+Let's change our target location:
+
+```js
+const storageRef = ref(storage, 'Pictures/hello'); // target location for to upload to
+```
+
+Here's the Cloud Function.
+
+```js
+import { txtFile } from "./myModule.js";
+
+export const uploadFile = functions.firestore.document('File/{docId}').onUpdate((change, context) => {
+  // const metadata = {
+  //   contentType: 'text/plain',
+  // };
+
+  async function fileUploader() {
+    try {
+      // const file = new File(txtFile);
+      const file = txtFile;
+      await uploadBytes(storageRef, file);
+      console.log('Uploaded a file!');
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  return fileUploader()
+});
+```
+
+That throws this error:
+
+```
+TypeError: Cannot read properties of undefined (reading 'byteLength')
+```
+
+In this error message, `undefined` is the file to upload. The error message is saying that it can't find a file to upload. You gave it a file but not a JavaScript File.
+
+Switch the comments:
+
+```js
+const file = new File(txtFile);
+// const file = txtFile;
+```
+
+That threws this error:
+
+```
+ReferenceError: File is not defined
+```
+
+As I noted, `new File()` isn't available in Node.
+
+
 
 
