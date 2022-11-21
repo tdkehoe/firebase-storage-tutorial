@@ -20,12 +20,12 @@ The third documentation page, [Upload files with Cloud Storage on Web](https://f
 
 ### Upload a String
 
-`uploadString` works fairly well:
+`uploadString` works, more or less:
 
 ```js
 import { initializeApp } from "firebase/app";
 import * as functions from "firebase-functions";
-import { getStorage, ref, uploadString, connectStorageEmulator, getMetadata } from "firebase/storage";
+import { getStorage, ref, uploadBtytes, uploadString, connectStorageEmulator, getMetadata } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "...",
@@ -40,18 +40,47 @@ const firebaseConfig = {
 initializeApp(firebaseConfig);
 
 const storage = getStorage();
-const storageRef = ref(storage, 'Pictures/message.txt');
+const storageRef = ref(storage, 'Pictures/message.txt'); // target location for to upload to
 // connectStorageEmulator(storage, "localhost", 9199); // comment out to write to the cloud
 
 export const sillyString = functions.firestore.document('Strings/{docId}').onUpdate((change, context) => {
-  const message = 'This is my message.';
-  uploadString(storageRef, message).then((snapshot) => {
-    console.log('Uploaded a raw string!');
-  });
+  // const metadata = {
+  //   contentType: 'text/plain',
+  // };
+
+  async function stringUploader() {
+    try {
+      const message = 'This is my message.'; // string to upload
+      await uploadString(storageRef, message)
+      console.log('Uploaded a raw string!');
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  return stringUploader()
 });
 ```
 
-You specify a string and where you want it to go. It uploads to your Cloud Storage.
+Open your Firebase Console and you should see `message.txt` in your Cloud Storage. 
+
+If you get an error message 
+
+```
+Firebase Storage: User does not have permission to access 'Pictures/message.txt'. (storage/unauthorized)"
+```
+
+then you need to change your Storage Rules to:
+
+```js
+match /Pictures/{file=**} {
+  allow read, write
+}
+```
+
+Every Cloud Function I run in the emulator logs a warning: `Your function timed out after ~60s.` I ignore these warnings.
+
+#### Storage Emulator
 
 Let's try the emulator. Remove the comments from:
 
@@ -59,33 +88,61 @@ Let's try the emulator. Remove the comments from:
 connectStorageEmulator(storage, "localhost", 9199); // comment out to write to the cloud
 ```
 
-My terminal logs that the function executed without a problem but nothing appears in the Storage emulator. Comment out `connectStorageEmulator`.
+My terminal logs that the function begins executing, then nothing but the timed out warning. The Storage Emulator doesn't appear to be working.
 
-Let's get the metadata. 
+#### Metadata
 
+Remove the comments from 
 
+```js
+const metadata = {
+  contentType: 'text/plain',
+};
+```
+
+and add `metadata` to this line:
+
+```js
+await uploadString(storageRef, message, metadata)
+```
+
+Comment out this line:
+
+```js
+// connectStorageEmulator(storage, "localhost", 9199); // comment out to write to the cloud
+```
+
+Execute the function. I get this error message:
+
+```
+'Firebase Storage: An unknown error occurred, please check the error payload for server response. (storage/unknown)'
+```
 
 ### Upload a Uint8 Array
 
 `uploadBytes` can upload a `file`, a `blob`, or a `UINT8 array`. 
 
-A `UINT8` is an [Unsigned Integer with 8 bits](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array), i.e., 0 through 255 decimal. Uploading a `UINT8 array` is similar to uploading a string:
+A `UINT8` is an [Unsigned Integer with 8 bits](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array), i.e., 0 through 255 decimal. Uploading a `UINT8 array` is similar to uploading a string, but we change `uploadString` to `uploadBytes`:
 
 ```js
-import { getStorage, ref, uploadBytes, connectStorageEmulator } from "firebase/storage";
+export const uploadUint8 = functions.firestore.document('Uint8/{docId}').onUpdate((change, context) => {
+  // const metadata = {
+  //   contentType: 'text/plain',
+  // };
 
-const storage = getStorage();
-const storageRef = ref(storage, 'UINT8_Arrays/my-first-uint8-array'); // where you want the string to go
-connectStorageEmulator(storage, "localhost", 9199); // comment out to write to the cloud  
+  async function uint8Uploader() {
+    try {
+      const bytes = new Uint8Array([0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x2c, 0x20, 0x77, 0x6f, 0x72, 0x6c, 0x64, 0x21]);
+      await uploadBytes(storageRef, bytes)
+      console.log('Uploaded a UINT8 array!');
+    } catch (error) {
+      console.error(error);
+    }
+  }
 
-const metadata = {
-  contentType: 'application/octet-stream',
-};
-
-const bytes = new Uint8Array([0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x2c, 0x20, 0x77, 0x6f, 0x72, 0x6c, 0x64, 0x21]);
-uploadBytes(storageRef, bytes).then((snapshot) => {
-  console.log('Uploaded an array!');
+  return uint8Uploader()
 });
 ```
 
+You should see `message.txt` in your Firebase Console. The number of bytes in the stored array should be the number of bytes in the array in your function.
 
