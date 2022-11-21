@@ -372,3 +372,10 @@ When you execute this you should see the new metadata logged in the console. Go 
 
 Note that there are two types of metadata. Using `getMetadata()` you can see the 15 metadata fields provided by Firebase Storage. Then there's a 16th field `customMetadata`. This is an object within the metadata object.
 
+#### Upload a Blob
+
+You can upload a `blob` instead of a `file`. I haven't tried this, it should be similar.
+
+## Conclusion
+
+That pretty much covers Firebase Storage.
