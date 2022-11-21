@@ -370,5 +370,5 @@ const metadata = {
 
 When you execute this you should see the new metadata logged in the console. Go to your Firebase Console, select the file, click "Other metadata" and you'll see the updated metadata.
 
-What's not in the documentation is that there are two types of metadata. Using `getMetadata()` you can see the 15 metadata fields provided by Firebase Storage. Then there's a 16th field `customMetadata`. This is an object within the metadata object.
+Note that there are two types of metadata. Using `getMetadata()` you can see the 15 metadata fields provided by Firebase Storage. Then there's a 16th field `customMetadata`. This is an object within the metadata object.
 
