@@ -25,7 +25,7 @@ The third documentation page, [Upload files with Cloud Storage on Web](https://f
 ```js
 import { initializeApp } from "firebase/app";
 import * as functions from "firebase-functions";
-import { getStorage, ref, uploadBtytes, uploadString, connectStorageEmulator, getMetadata } from "firebase/storage";
+import { getStorage, ref, uploadBtytes, uploadString, connectStorageEmulator, getMetadata, updateMetadata, getDownloadURL } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "...",
@@ -213,6 +213,7 @@ export const uploadFile = functions.firestore.document('File/{docId}').onUpdate(
     try {
       // const file = new File(txtFile);
       const file = txtFile;
+      console.log(file); // Hello world
       await uploadBytes(storageRef, file);
       console.log('Uploaded a file!');
     } catch (error) {
@@ -230,7 +231,7 @@ That throws this error:
 TypeError: Cannot read properties of undefined (reading 'byteLength')
 ```
 
-In this error message, `undefined` is the file to upload. The error message is saying that it can't find a file to upload. You gave it a file but not a JavaScript File.
+In this error message, `undefined` is the file to upload. The error message is saying that it can't find a file to upload. We gave it a file but not a JavaScript File. The log shows "Hello world", indicating that the contents of the file have been imported into `index.js` but it wasn't imported as a file. The contents have to be converted into a file.
 
 Switch the comments:
 
@@ -246,6 +247,10 @@ ReferenceError: File is not defined
 ```
 
 As I noted, `new File()` isn't available in Node.
+
+#### Download a File From an API
+
+
 
 
 
