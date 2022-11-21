@@ -6,7 +6,7 @@ This reference will use Firebase Cloud Functions, ES modules, and the Firebase E
 
 ## Initialize and Test the Firebase Emulator
 
-My tutorial 
+Follow my tutorial about the Firebase Emulator to start the Firestore, Functions, and Storage emulators.
 
 ## Getting Started and Creating a Reference
 
