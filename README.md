@@ -168,7 +168,7 @@ await uploadBytes(storageRef, bytes, metadata);
 
 That should execute. If you open the file data in your Firebase Console you'll see the metadata.
 
-### Upload a File
+### Upload a File or Blob
 
 Now we get to the part you've been waiting for. There are two "gotchas" here. 
 
@@ -180,7 +180,11 @@ fs.writeFile('<fileName>',<contenet>, callbackFunction)
 
 There are several tutorials teaching how to create a file in Node.js. It's not simple.
 
+But wait! You can upload a [Blob](https://developer.mozilla.org/en-US/docs/Web/API/Blob) instead of a file. A blob is a "file-like object of immutable, raw data...Blobs can represent data that isn't necessarily in a JavaScript-native format." That sounds like we can get around the JavaScript File requirement but I haven't found this to be a solution.
+
 Second, you must `import` your file into `index.js`, which means your file must be an ES module. This is simple enough for a text file but gets complex with pictures or other large binary files. This is done with [Webpack](https://webpack.js.org/). I spent a day learning Webpack and gave up.
+
+#### Make and Import an ES Module Text File
 
 Let's make a simple text file. Make a new file and call it `myModule.js`:
 
@@ -202,6 +206,8 @@ Let's change our target location:
 ```js
 const storageRef = ref(storage, 'Pictures/hello'); // target location for to upload to
 ```
+
+##### Write the Cloud Function
 
 Here's the Cloud Function.
 
@@ -237,6 +243,8 @@ TypeError: Cannot read properties of undefined (reading 'byteLength')
 
 In this error message, `undefined` is the file to upload. The error message is saying that it can't find a file to upload. We gave it a file but not a JavaScript File. The log shows "Hello world", indicating that the contents of the file have been imported into `index.js` but it wasn't imported as a file. The contents have to be converted into a file.
 
+The syntax for blobs and files is the same. Firebase should have uploaded our file as a blob but it didn't.
+
 Switch the comments:
 
 ```js
@@ -251,6 +259,62 @@ ReferenceError: File is not defined
 ```
 
 As I noted, `new File()` isn't available in Node.
+
+#### Upload a Blob
+
+But `new Blob()` is available in Node:
+
+```js
+import { Blob } from 'buffer';
+
+...
+
+const blob = new Blob(txtFile);
+```
+
+That threw this error:
+
+```
+TypeError [ERR_INVALID_ARG_TYPE]: The "sources" argument must be a sequence. Received type string ('Hello world')
+```
+
+##### Back to UINT8
+
+Let's try converting our text file into a UINT8 array.
+
+export const uploadUint8 = functions.firestore.document('Uint8/{docId}').onUpdate((change, context) => {
+  const metadata = {
+    contentType: 'application/octet-stream',
+  };
+
+  var enc = new TextEncoder(); // always utf-8
+  const bytes = enc.encode(txtFile);
+  console.log(bytes);
+
+  async function uint8Uploader() {
+    try {
+      // const bytes = new Uint8Array([0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x2c, 0x20, 0x77, 0x6f, 0x72, 0x6c, 0x64, 0x21]);
+      await uploadBytes(storageRef, bytes, metadata);
+      console.log('Uploaded a UINT8 array!');
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  return uint8Uploader()
+});
+
+All we did was add
+
+```js
+  var enc = new TextEncoder(); // always utf-8
+  const bytes = enc.encode(txtFile);
+  console.log(bytes);
+```
+
+and comment out the old UINT8 array.
+
+This works, was easy, and you can compare the log of 11 integers to the uploaded file size (11 bytes).
 
 #### Download a File From an API
 
@@ -372,10 +436,10 @@ When you execute this you should see the new metadata logged in the console. Go 
 
 Note that there are two types of metadata. Using `getMetadata()` you can see the 15 metadata fields provided by Firebase Storage. Then there's a 16th field `customMetadata`. This is an object within the metadata object.
 
-#### Upload a Blob
-
-You can upload a `blob` instead of a `file`. I haven't tried this, it should be similar.
+## Download From Storage
 
 ## Conclusion
 
-That pretty much covers Firebase Storage.
+We've succeeded in uploading a local small text file and a remote API large binary file. We haven't been able to upload a local large binary file but with more effort with Webpack we should we able to do that.
+
+We were able to upload to Cloud Storage but not to the Storage Emulator.
