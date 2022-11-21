@@ -25,7 +25,7 @@ The third documentation page, [Upload files with Cloud Storage on Web](https://f
 ```js
 import { initializeApp } from "firebase/app";
 import * as functions from "firebase-functions";
-import { getStorage, ref, uploadBtytes, uploadString, connectStorageEmulator, getMetadata, updateMetadata, getDownloadURL } from "firebase/storage";
+import { getStorage, ref, uploadBytes, uploadString, connectStorageEmulator, getMetadata, updateMetadata, getDownloadURL } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "...",
@@ -254,7 +254,15 @@ As I noted, `new File()` isn't available in Node.
 
 #### Download a File From an API
 
-Let's try downloading a file from an API then uploading the file to Storage. We'll use the npm package [got](https://www.npmjs.com/package/got) for our http requests. In your terminal get `got`:
+Let's try downloading a file from an API then uploading the file to Storage. We'll download this audiofile from the Oxford English Dictionary:
+
+```
+https://audio.oxforddictionaries.com/en/mp3/winter__us_2.mp3
+```
+
+Put that in a browser and listen to the audiofile.
+
+We'll use the npm package [got](https://www.npmjs.com/package/got) for our http requests. In your terminal get `got`:
 
 ```
 npm install got
@@ -266,37 +274,101 @@ Make a new function in `index.js`:
 import got from 'got';
 
 export const downloadFromAPI = functions.firestore.document('API/{docId}').onUpdate((change) => {
-let oedAudioDownloadURL = 'https://audio.oxforddictionaries.com/en/mp3/winter__us_2.mp3';
+  let oedAudioDownloadURL = 'https://audio.oxforddictionaries.com/en/mp3/winter__us_2.mp3';
   let word = change.after.data().word;
   let audioType = 'mp3';
   
   const storage = getStorage();
   const storageRef = ref(storage, 'Pictures/' + word + '.' + audioType);
   
+  // const metadata = {
+  //   contentType: 'audio/mpeg',
+  //   contentLanguage: 'en', // must be ISO 639-1
+  //   customMetadata: {
+  //     'audioType': audioType,
+  //     'longAccent': 'United_States',
+  //     'shortAccent': 'US',
+  //     'longLanguage': 'English',
+  //     'shortLanguage': 'en',
+  //     'source': 'Oxford Dictionaries',
+  //     'word': word,
+  //   },
+  // };
+  
   async function getAudiofileWrite2Storage() {
     try {
       let file = await got(oedAudioDownloadURL);
-      await uploadBytes(storageRef, file['rawBody'], metadata);
+      await uploadBytes(storageRef, file['rawBody']);
       const downloadURL = await getDownloadURL(ref(storage, 'Pictures/' + word + '.' + audioType));
       console.log(downloadURL);
       const gotMetadata = await getMetadata(storageRef);
       console.table(gotMetadata);
 
       // Update metadata properties
-      // updateMetadata(storageRef, newMetadata)
-      //   .then((metadata) => {
-      //     console.log("Metadata updated: ");
-      //     console.table(metadata);
-      //   }).catch((error) => {
-      //     console.error(error);
-      //   });
+      // updateMetadata(storageRef, metadata)
+      // console.log("Metadata updated: ");
+      // console.table(metadata);
 
     } catch (error) {
       console.error(error);
     }
   };
   
- return getAudiofileWrite2Storage()
+  return getAudiofileWrite2Storage()
 });
 ```
+
+We import `got` to handle the API download.
+
+We trigger the function from the collection `API`.
+
+We set the URL for the API download.
+
+We get the word that you entered into Firestore to trigger the function. This becomes the filename.
+
+We set the file type as `mp3`.
+
+We set `storage` and `storageRef`.
+
+We make an async function `getAudiofileWrite2Storage`.
+
+First, we use `got()` to download the audiofile from the OED.
+
+Next, we run `uploadBytes()` to upload the file to Cloud Storage. Note the undocumented keyword `['rawBody']`. This enables `uploadBtyes()` to handle a file that isn't a JavaScript File. (But not the "Hello world" file from the previous section.)
+
+That's it, two lines to download a file from an API and upload it to Cloud Storage. In years past I had to write twenty complex lines of Node and Firebase to do this.
+
+Then we get the download URL and log it. You should see this in your terminal. Put the URL in a browser window and you'll hear the same file that you downloaded directly from the OED.
+
+Lastly, we get the metadata with `getMetadata()` and log this.
+
+##### Update the metadata
+
+Look at the logged metadata. Several values are undefined, and `contentType` is set to the default `application/octet-stream`, which is for UINT8 arrays. Let's fix these. Remove the comments:
+
+```js
+const metadata = {
+    contentType: 'audio/mpeg',
+    contentLanguage: 'en', // must be ISO 639-1
+    customMetadata: {
+      'audioType': audioType,
+      'longAccent': 'United_States',
+      'shortAccent': 'US',
+      'longLanguage': 'English',
+      'shortLanguage': 'en',
+      'source': 'Oxford Dictionaries',
+      'word': word,
+   },
+};
+
+...
+
+  updateMetadata(storageRef, metadata)
+  console.log("Metadata updated: ");
+  console.table(metadata);
+```
+
+When you execute this you should see the new metadata logged in the console. Go to your Firebase Console, select the file, click "Other metadata" and you'll see the updated metadata.
+
+What's not in the documentation is that there are two types of metadata. Using `getMetadata()` you can see the 15 metadata fields provided by Firebase Storage. Then there's a 16th field `customMetadata`. This is an object within the metadata object.
 
