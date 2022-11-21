@@ -62,6 +62,10 @@ export const sillyString = functions.firestore.document('Strings/{docId}').onUpd
 });
 ```
 
+To execute the function, open your emulator console to Firestore. Make a new collection "Strings", let Firestore generate a document ID, and make a property. Put whatever you want in the key-value pair. I like `season: 'winter'`.
+
+Change the value, e.g., to `spring`. We have to change the value because we're triggering the function with `onUpdate`, not `onCreate`.
+
 Open your Firebase Console and you should see `message.txt` in your Cloud Storage. 
 
 If you get an error message 
@@ -250,8 +254,49 @@ As I noted, `new File()` isn't available in Node.
 
 #### Download a File From an API
 
+Let's try downloading a file from an API then uploading the file to Storage. We'll use the npm package [got](https://www.npmjs.com/package/got) for our http requests. In your terminal get `got`:
 
+```
+npm install got
+```
 
+Make a new function in `index.js`:
 
+```js
+import got from 'got';
 
+export const downloadFromAPI = functions.firestore.document('API/{docId}').onUpdate((change) => {
+let oedAudioDownloadURL = 'https://audio.oxforddictionaries.com/en/mp3/winter__us_2.mp3';
+  let word = change.after.data().word;
+  let audioType = 'mp3';
+  
+  const storage = getStorage();
+  const storageRef = ref(storage, 'Pictures/' + word + '.' + audioType);
+  
+  async function getAudiofileWrite2Storage() {
+    try {
+      let file = await got(oedAudioDownloadURL);
+      await uploadBytes(storageRef, file['rawBody'], metadata);
+      const downloadURL = await getDownloadURL(ref(storage, 'Pictures/' + word + '.' + audioType));
+      console.log(downloadURL);
+      const gotMetadata = await getMetadata(storageRef);
+      console.table(gotMetadata);
+
+      // Update metadata properties
+      // updateMetadata(storageRef, newMetadata)
+      //   .then((metadata) => {
+      //     console.log("Metadata updated: ");
+      //     console.table(metadata);
+      //   }).catch((error) => {
+      //     console.error(error);
+      //   });
+
+    } catch (error) {
+      console.error(error);
+    }
+  };
+  
+ return getAudiofileWrite2Storage()
+});
+```
 
