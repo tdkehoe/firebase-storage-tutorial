@@ -51,7 +51,7 @@ export const sillyString = functions.firestore.document('Strings/{docId}').onUpd
   async function stringUploader() {
     try {
       const message = 'This is my message.'; // string to upload
-      await uploadString(storageRef, message)
+      await uploadString(storageRef, message);
       console.log('Uploaded a raw string!');
     } catch (error) {
       console.error(error);
@@ -145,4 +145,52 @@ export const uploadUint8 = functions.firestore.document('Uint8/{docId}').onUpdat
 ```
 
 You should see `message.txt` in your Firebase Console. The number of bytes in the stored array should be the number of bytes in the array in your function.
+
+#### Metadata
+
+Remove the comments from 
+
+```js
+const metadata = {
+  contentType: 'text/plain',
+};
+```
+
+and add `metadata` to this line:
+
+```js
+await uploadBytes(storageRef, bytes, metadata);
+```
+
+That should execute. If you open the file data in your Firebase Console you'll see the metadata.
+
+### Upload a File
+
+Now we get to the part you've been waiting for. There are two "gotchas" here. 
+
+First, you can't just upload any file. You can only upload a [JavaScript File](https://developer.mozilla.org/en-US/docs/Web/API/File). JavaScript Files are made with the `new File()` constructor, which isn't available in Node. In Node we use
+
+```js
+fs.writeFile('<fileName>',<contenet>, callbackFunction)
+```
+
+There are several tutorials teaching how to create a file in Node.js. It's not simple.
+
+Second, you must `import` your file into `index.js`, which means your file must be an ES module. This is simple enough for a text file but gets complex with pictures or other large binary files. This is done with [Webpack](https://webpack.js.org/). I spent a day learning Webpack and gave up.
+
+Let's make a simple text file. Make a new file and call it `myModule.js`:
+
+```js
+// myModule.js
+export const txtFile = "Hello world";
+```
+
+In `index.js`, import your new ES module:
+
+```js
+import { txtFile } from "./myModule.js";
+```
+
+So far, so good. We have a file available but it's not a JavaScript File.
+
 
